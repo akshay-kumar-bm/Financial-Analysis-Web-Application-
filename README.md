@@ -1,86 +1,39 @@
-# Stock Market Analysis and Portfolio Management
+# Stock Market Analysis and Portfolio Management Web App
 
-This Flask-based web application provides tools for stock market analysis, portfolio management, and financial planning. It includes features such as stock screening, visualization, portfolio allocation recommendations, and a compound interest calculator.
+A Flask web application for Indian (NIFTY) stock screening and visualisation, ML-based portfolio allocation by age and risk profile, a SIP/compound-interest calculator and an admin-managed blog, with user registration and login.
 
 ## Features
+- **Auth**: register/login with bcrypt-hashed passwords (SQLite via Flask-SQLAlchemy), password-strength regex; session-based; an `Admin` user can publish blog posts with image uploads.
+- **Screener** (`/screener`): table of NIFTY stocks with technical indicators (MACD histogram, ADX, ATR, EMA-200, RSI, Stochastic and slopes) computed with the `ta` library; searching a company redirects to Google Finance.
+- **Visualization** (`/visualization`): matplotlib plots of top/bottom performers over ~1 month, 1 year and 5 years, rendered as base64 images.
+- **Data refresh**: an APScheduler job reruns `run()` hourly: downloads OHLC for the symbols in `nifty_data.csv` via yfinance, computes indicators, pickles the data and rebuilds the result CSVs.
+- **Portfolio allocation** (`/portfolio`): a scikit-learn `RandomForestRegressor` trained on `data.csv` (13 rows of age x investor type to asset-class percentages: equity, mutual funds, debt funds, gold bonds, govt bonds, PPF, FDs) predicts an allocation and an estimated blended return from hard-coded average returns.
+- **SIP calculator** (`/compound-interest`): monthly-compounding projection with chart data.
+- **Blog** (`/blog`, `/admin`).
 
-- User authentication and registration
-- Stock screening and visualization
-- Blog functionality for sharing market insights
-- Portfolio allocation recommendations based on age and investor type
-- Compound interest calculator
-- Real-time stock data updates
+## Tech stack
+Flask, Flask-SQLAlchemy (SQLite), bcrypt, pandas, NumPy, scikit-learn, yfinance, ta, matplotlib/seaborn/plotly, APScheduler; Jinja templates, CSS/JS. Notebooks `jupternode.ipynb` (portfolio data exploration) and `demo.ipynb` (ticker/data scratch work).
 
-## Technologies Used
+## Structure
+```
+app.py                 # all routes, models, scheduler
+utils/                 # data_utils.py, ml_utils.py
+templates/  static/    # pages, images, uploads
+data/                  # generated CSVs and pickles (~50 MB)
+nifty_data.csv  data.csv  portfolio.pkl
+instance/users_post.db # SQLite user/blog DB
+```
 
-- Python
-- Flask
-- SQLAlchemy
-- Pandas
-- Scikit-learn
-- yfinance
-- Matplotlib
-- Seaborn
-- APScheduler
+## Run
+```bash
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+`db.create_all()` runs at startup, so `flask db` migration commands in the old README are not required (no Flask-Migrate in requirements). Generated data files already exist under `data/`; on first run the hourly job will refresh them (requires internet for yfinance). Note: `app.py` imports `matplotlib`, `ta` and `yfinance`, all listed in requirements.txt.
 
-## Installation
-
-1. Clone the repository:
-   ```
-   git clone https://github.com/yourusername/stock-market-analysis.git
-   cd stock-market-analysis
-   ```
-
-2. Create a virtual environment and activate it:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-   ```
-
-3. Install the required packages:
-   ```
-   pip install -r requirements.txt
-   ```
-
-4. Set up the database:
-   ```
-   flask db init
-   flask db migrate
-   flask db upgrade
-   ```
-
-5. Run the application:
-   ```
-   python app.py
-   ```
-
-## Usage
-
-1. Register a new account or log in with existing credentials.
-2. Explore the stock screening tool to analyze market trends.
-3. Use the portfolio allocation feature to get personalized investment recommendations.
-4. Calculate potential returns using the compound interest calculator.
-5. Read and contribute to the blog for market insights.
-
-## Deployment on AWS
-
-To deploy this application on AWS:
-
-1. Set up an EC2 instance with Ubuntu.
-2. Install required software (Python, pip, nginx, etc.) on the instance.
-3. Clone the repository to the EC2 instance.
-4. Set up a virtual environment and install dependencies.
-5. Configure nginx as a reverse proxy for the Flask application.
-6. Use Gunicorn to serve the Flask application.
-7. Set up environment variables for sensitive information.
-8. Configure security groups to allow necessary inbound traffic.
-
-Detailed AWS deployment instructions can be found in the `DEPLOYMENT.md` file.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Limitations
+- Hard-coded Flask `secret_key` placeholder and `debug` style settings; not production-ready.
+- Hourly job downloads ~200 tickers sequentially; no caching strategy, error handling or tests.
+- Portfolio model is trained on a tiny hand-made table; returns are static assumptions. Not financial advice.
+- Old README mentions DEPLOYMENT.md, LICENSE and a placeholder clone URL that do not exist.
